@@ -1,9 +1,11 @@
 import pyroomacoustics as pra
 import numpy as np
-from source.data_processing.location_sampler import LocationSampler
-from source.data_processing.audio_data_loader import load_all_wavs_in_dir
 from tqdm import tqdm
 from scipy.io.wavfile import write
+
+from source.data_processing.location_sampler import LocationSampler
+from source.data_processing.audio_data_loader import load_all_wavs_in_dir
+from source.data_processing.acoustic_preprocessor import preprocess_audio_array
 
 
 np.random.seed(0)
@@ -53,10 +55,28 @@ speaker_locations = location_sampler.sample_uniform(num_speakers)
 signals, filenames = load_all_wavs_in_dir(DATA_LOCATION)
 
 num_signals = len(signals)
+X_angle = []
+X_amplitude = []
+Y_list = []
 for i, speaker_location in enumerate(tqdm(speaker_locations)):
     room.add_source(position=np.array([speaker_location[0], speaker_location[1], height]), signal=signals[i % num_signals])
 
     room.simulate()
 
-    write(f"data/generated/{filenames[i]}_{speaker_location[0]}_{speaker_location[1]}_left_mic.wav", fs, room.mic_array.signals[0,:])
-    write(f"data/generated/{filenames[i]}_{speaker_location[0]}_{speaker_location[1]}_right_mic.wav", fs, room.mic_array.signals[1,:])
+    x1 = room.mic_array.signals[0,:]
+    x2 = room.mic_array.signals[1,:]
+    # write(f"data/generated/{filenames[i % num_signals]}_{speaker_location[0]}_{speaker_location[1]}_left_mic.wav", fs, x1)
+    # write(f"data/generated/{filenames[i % num_signals]}_{speaker_location[0]}_{speaker_location[1]}_right_mic.wav", fs, x2)
+
+    mean_amplitude, prp = preprocess_audio_array(x1, x2, fs)
+
+    p = np.tile([speaker_location[0], speaker_location[1]], [prp.shape[0], 1])
+
+    X_angle.append(prp)
+    X_amplitude.append(mean_amplitude)
+    Y_list.append(p)
+    room.sources = []
+
+combined_audio_feature_list = [np.concatenate((a, b), axis=1) for a, b in zip(X_amplitude, X_angle)]
+X = np.concatenate(combined_audio_feature_list, axis=0)
+Y = np.concatenate(Y_list, axis=0)
