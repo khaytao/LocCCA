@@ -2,10 +2,25 @@ import pyroomacoustics as pra
 import numpy as np
 from tqdm import tqdm
 from scipy.io.wavfile import write
+import csv
 
 from source.data_processing.location_sampler import LocationSampler
 from source.data_processing.audio_data_loader import load_all_wavs_in_dir
 from source.data_processing.acoustic_preprocessor import preprocess_audio_array
+
+
+def save_dataset_to_file(dataset, filename):
+    """
+    Save a dataset to a CSV file.
+
+    Parameters:
+    dataset (tuple of tuples): The dataset to save, where the outer tuple represents samples and the inner tuples represent features.
+    filename (str): The name of the file to save the dataset to.
+    """
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        for sample in dataset:
+            writer.writerow(sample)
 
 
 np.random.seed(0)
@@ -80,3 +95,6 @@ for i, speaker_location in enumerate(tqdm(speaker_locations)):
 combined_audio_feature_list = [np.concatenate((a, b), axis=1) for a, b in zip(X_amplitude, X_angle)]
 X = np.concatenate(combined_audio_feature_list, axis=0)
 Y = np.concatenate(Y_list, axis=0)
+
+save_dataset_to_file(X, "X_train.csv")
+save_dataset_to_file(Y, "Y_train.csv")
