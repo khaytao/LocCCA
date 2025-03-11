@@ -7,7 +7,7 @@ import pandas as pd
 from DeepCCAModels import DeepCCA
 from sklearn.cross_decomposition import CCA
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 # Load datasets from CSV files
 X_train = pd.read_csv('X_train.csv', header=None).values
 Y_train = pd.read_csv('Y_train.csv', header=None).values
@@ -46,13 +46,13 @@ layer_sizes_Y = [hidden_dim, output_dim]
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = DeepCCA(layer_sizes_X, layer_sizes_Y, input_dim_X, input_dim_Y, output_dim, use_all_singular_values=False, device=device).to(device)
-
+model.model2 = nn.Identity()
 # Training the model
 optimizer = optim.LBFGS(list(model.parameters()), lr=0.1)
 
 def train(epoch):
     model.train()
-    for data_X, data_Y in train_loader:
+    for data_X, data_Y in tqdm(train_loader):
         data_X = data_X.to(device)
         data_Y = data_Y.to(device)
 
@@ -65,9 +65,12 @@ def train(epoch):
 
         optimizer.step(closure)
 
+
 for epoch in range(1, 11):
     train(epoch)
     print(f'Epoch {epoch} complete')
+
+torch.save(model.state_dict(), "model_state.pth")
 
 # Evaluate the model
 model.eval()
@@ -85,6 +88,8 @@ with torch.no_grad():
             dcca_corrs[i-1] += corr
 dcca_corrs /= len(test_loader)
 print(f'DCCA Test correlation: {np.mean(dcca_corrs)}')
+
+
 
 # Linear CCA
 cca = CCA(n_components=output_dim)
