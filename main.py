@@ -15,6 +15,7 @@ transform = transforms.Compose([transforms.ToTensor()])
 train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
+
 # Split dataset into left and right halves
 def split_mnist(dataset):
     left_data = []
@@ -23,6 +24,7 @@ def split_mnist(dataset):
         left_data.append(img[:, :, :14].reshape(-1))
         right_data.append(img[:, :, 14:].reshape(-1))
     return torch.stack(left_data), torch.stack(right_data)
+
 
 train_left, train_right = split_mnist(train_dataset)
 test_left, test_right = split_mnist(test_dataset)
@@ -46,10 +48,12 @@ layer_sizes1 = [hidden_dim, output_dim]
 layer_sizes2 = [hidden_dim, output_dim]
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = DeepCCA(layer_sizes1, layer_sizes2, input_dim, input_dim, output_dim, use_all_singular_values=False, device=device).to(device)
+model = DeepCCA(layer_sizes1, layer_sizes2, input_dim, input_dim, output_dim, use_all_singular_values=False,
+                device=device).to(device)
 
 # Training the model
 optimizer = optim.LBFGS(list(model.parameters()), lr=0.1)
+
 
 def train(epoch):
     model.train()
@@ -66,6 +70,7 @@ def train(epoch):
 
         optimizer.step(closure)
 
+
 for epoch in range(1, 11):
     train(epoch)
     print(f'Epoch {epoch} complete')
@@ -78,9 +83,9 @@ with torch.no_grad():
     for data_left, data_right in test_loader:
         data_left = data_left.to(device)
         data_right = data_right.to(device)
-        
+
         output_left, output_right = model(data_left, data_right)
-        
+
         # Compute batch correlations manually
         H1, H2 = output_left.T, output_right.T  # Transpose to [features x batch_size]
         SigmaHat12 = torch.matmul(H1, H2.T) / (H1.shape[1] - 1)  # Cross-covariance
@@ -93,8 +98,8 @@ with torch.no_grad():
         D1, V1 = D1[D1 > 1e-9], V1[:, D1 > 1e-9]
         D2, V2 = D2[D2 > 1e-9], V2[:, D2 > 1e-9]
 
-        SigmaHat11RootInv = V1 @ torch.diag(D1**-0.5) @ V1.T
-        SigmaHat22RootInv = V2 @ torch.diag(D2**-0.5) @ V2.T
+        SigmaHat11RootInv = V1 @ torch.diag(D1 ** -0.5) @ V1.T
+        SigmaHat22RootInv = V2 @ torch.diag(D2 ** -0.5) @ V2.T
 
         # Canonical correlations
         Tval = SigmaHat11RootInv @ SigmaHat12 @ SigmaHat22RootInv
@@ -103,7 +108,7 @@ with torch.no_grad():
         dcca_corrs.append(singular_values.cpu().numpy())  # Store per-batch correlations
 
 # Average across batches
-dcca_corrs = np.mean(np.array(dcca_corrs), axis=0)  
+dcca_corrs = np.mean(np.array(dcca_corrs), axis=0)
 print(f'DCCA Test correlation: {np.sum(dcca_corrs)}')
 
 # Linear CCA

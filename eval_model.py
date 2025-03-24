@@ -1,10 +1,11 @@
-from DeepCCAModels import DeepCCA
-
+from DCCA_model import DCCA_model
+import torch
+import numpy as np
 
 DATA_PATH_X = "X_test.csv"
 DATA_PATH_Y = "Y_test.csv"
 
-model = DeepCCA()
+model = DCCA_model()
 
 model.load_state_dict(torch.load("model_state.pth"))
 

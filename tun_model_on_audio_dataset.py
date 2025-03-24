@@ -9,6 +9,24 @@ from sklearn.cross_decomposition import CCA
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 # Load datasets from CSV files
+
+
+def train(model, optimizer, train_loader, device, epoch):
+    model.train()
+    for data_X, data_Y in tqdm(train_loader):
+        data_X = data_X.to(device)
+        data_Y = data_Y.to(device)
+
+        def closure():
+            optimizer.zero_grad()
+            output_X, output_Y = model(data_X, data_Y)
+            loss = model.loss(output_X, output_Y)
+            loss.backward()
+            return loss
+
+        optimizer.step(closure)
+
+
 X_train = pd.read_csv('X_train.csv', header=None).values
 Y_train = pd.read_csv('Y_train.csv', header=None).values
 X_test = pd.read_csv('X_test.csv', header=None).values
@@ -50,20 +68,6 @@ model.model2 = nn.Identity()
 # Training the model
 optimizer = optim.LBFGS(list(model.parameters()), lr=0.1)
 
-def train(epoch):
-    model.train()
-    for data_X, data_Y in tqdm(train_loader):
-        data_X = data_X.to(device)
-        data_Y = data_Y.to(device)
-
-        def closure():
-            optimizer.zero_grad()
-            output_X, output_Y = model(data_X, data_Y)
-            loss = model.loss(output_X, output_Y)
-            loss.backward()
-            return loss
-
-        optimizer.step(closure)
 
 
 for epoch in range(1, 11):
