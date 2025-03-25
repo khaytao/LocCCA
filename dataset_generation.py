@@ -161,19 +161,25 @@ def main(args, mic_locations):
         #
         # p = np.tile([speaker_location[0], speaker_location[1]], [prp.shape[0], 1])
         #
-        # X_angle.append(prp)
-        # X_amplitude.append(mean_amplitude)
-        # Y_list.append(p)
 
-    # combined_audio_feature_list = [np.concatenate((a, b), axis=1) for a, b in zip(X_amplitude, X_angle)]
-    # X = np.concatenate(combined_audio_feature_list, axis=0)
-    # Y = np.concatenate(Y_list, axis=0)
-    #
-    # candidates = get_candidates(args.room_dim, args.room_resolution)
-    #
-    # save_dataset_to_file(candidates, f"candidates_{args.dataset_name}.csv")
-    # save_dataset_to_file(X, f"X_{args.dataset_name}.csv")
-    # save_dataset_to_file(Y, f"Y_{args.dataset_name}.csv")
+        p = np.zeros((x.shape[0], 2))
+        for i in range(x.shape[0] // 2):
+            p[2*i] = speaker_location[0] - mic_positions[0, i]
+            p[2*i + 1] = speaker_location[1] - mic_positions[1, i]
+
+        X_angle.append(prp.reshape(prp.shape[0], -1))  # Reshape prp to T x (C x F)
+        X_amplitude.append(mean_amplitude.reshape(prp.shape[0], -1))
+        Y_list.append(p)
+
+    combined_audio_feature_list = [np.concatenate((a, b), axis=1) for a, b in zip(X_amplitude, X_angle)]
+    X = np.concatenate(combined_audio_feature_list, axis=0)
+    Y = np.concatenate(Y_list, axis=0)
+    
+    candidates = get_candidates(args.room_dim, args.room_resolution)
+    
+    save_dataset_to_file(candidates, f"candidates_{args.dataset_name}.csv")
+    save_dataset_to_file(X, f"X_{args.dataset_name}.csv")
+    save_dataset_to_file(Y, f"Y_{args.dataset_name}.csv")
     return
 
 

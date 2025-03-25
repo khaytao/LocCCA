@@ -14,7 +14,7 @@ import librosa
 
 #     return mean_amplitude.T, prp.T  # Assume Data is N x d
 
-def preprocess_audio_array(x: np.ndarray, fs: int, n_fft: int = 1024, hop_length: int = 512, window: str = "hann"):
+def preprocess_audio_array(x: np.ndarray, fs: int, n_fft: int = 256, hop_length: int = 128, window: str = "hann"):
     z = librosa.stft(x, n_fft=n_fft, hop_length=hop_length, win_length=n_fft, window=window)
 
     # Split into even (left) and odd (right) channels
