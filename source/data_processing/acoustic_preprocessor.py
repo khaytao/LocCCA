@@ -2,7 +2,13 @@ import scipy
 import numpy as np
 import librosa
 
-
+def compute_steering_vector(source_coord, sensor_coords, sampling_freq, speed_of_sound=343.0):
+    source_coord = array(source_coord)
+    sensor_coords = array(sensor_coords)
+    direction_vector = source_coord / linalg.norm(source_coord)
+    f = sampling_freq
+    steering_vector = exp(1j * 2 * pi * f / speed_of_sound * dot(sensor_coords, direction_vector))
+    return steering_vector
 # def preprocess_audio_array(x1: np.ndarray, x2:np.ndarray, fs: int, n_fft: int = 1024, hop_length: int = 512, window: str = "hann"):
 #     N = min(len(x1), len(x2))
 #     f, t, z1 = scipy.signal.stft(x1[:N], fs=fs, nperseg=n_fft, noverlap=n_fft - hop_length, window=window)
