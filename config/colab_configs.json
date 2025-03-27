@@ -1,0 +1,26 @@
+{
+    "tasks": ["data-generation", "train", "eval"],
+    "data-generation": {
+        "room_dim": [6.0, 6.0, 6.0],
+        "t60": 0.2,
+        "fs": 16000,
+        "mic_height": 1.8,
+        "array_distance": 0.2,
+        "height": 1.8,
+        "num_speakers": 100,
+        "distribution": "uniform",
+        "centroids": [3, 3],
+        "std": 0.5,
+        "data_location": "data/TIMIT/sample_dataset",
+        "dataset_name": "TIMIT_sample",
+        "room_resolution": 10
+    },
+    "train": {},
+    "eval": {
+        "model": "music",
+        "data_dir": "data/generated/TIMIT_sample",
+        "threshold": 0.5,
+        "plot": true
+    }
+}
+

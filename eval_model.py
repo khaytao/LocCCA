@@ -145,8 +145,8 @@ if __name__ == "__main__":
                       help='Distance threshold for failure detection')
     parser.add_argument('--plot', type=bool, default=True,
                       help='Plot predictions')
-    parser.add_argument('--device', type=str, default='cpu',
-                      help='Device to run model on')
+    parser.add_argument('--device', type=str, default=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+                      help='Device to run model on (cuda if available, otherwise cpu)')
 
     args = parser.parse_args()
 
