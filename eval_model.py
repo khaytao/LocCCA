@@ -146,33 +146,13 @@ def plot_predictions(predictions, ground_truth):
     plt.legend()
     plt.show()
 
-if __name__ == "__main__":
-    
-    parser = argparse.ArgumentParser(description='Evaluate localization model')
-    parser.add_argument('--model', type=str, default='music',
-                      help='Model type (music, srp-phat, linear-cca, deep-cca)')
-    parser.add_argument('--data_dir', type=str, default='data/generated/TIMIT_sample',
-                      help='Directory containing dataset')
-    parser.add_argument('--threshold', type=float, default=0.5,
-                      help='Distance threshold for failure detection')
-    parser.add_argument('--plot', type=bool, default=True,
-                      help='Plot predictions')
-    parser.add_argument('--device', type=str, default=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-                      help='Device to run model on (cuda if available, otherwise cpu)')
-    
-    parser.add_argument('--performance_file', type=str, default='performance.xlsx',
-                    help='Path to Excel file for saving performance metrics')
-
-    args = parser.parse_args()
-
+def main(args):
     num_speakers, num_failures, avg_with_failures, avg_without_failures = evaluate_model_on_data(args)
 
     # Calculate failure percentage
     fail_percentage = (num_failures / num_speakers) * 100
 
     # Create performance dataframe if it doesn't exist, otherwise load it
-
-
     performance_file = args.performance_file
     if os.path.exists(performance_file):
         perf_df = pd.read_excel(performance_file)
@@ -201,3 +181,21 @@ if __name__ == "__main__":
     print(f"Failure percentage: {fail_percentage:.2f}%")
     print(f"Average distance with failures: {avg_with_failures:.4f}")
     print(f"Average distance without failures: {avg_without_failures:.4f}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Evaluate localization model')
+    parser.add_argument('--model', type=str, default='music',
+                      help='Model type (music, srp-phat, linear-cca, deep-cca)')
+    parser.add_argument('--data_dir', type=str, default='data/generated/TIMIT_sample',
+                      help='Directory containing dataset')
+    parser.add_argument('--threshold', type=float, default=0.5,
+                      help='Distance threshold for failure detection')
+    parser.add_argument('--plot', type=bool, default=True,
+                      help='Plot predictions')
+    parser.add_argument('--device', type=str, default=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+                      help='Device to run model on (cuda if available, otherwise cpu)')
+    parser.add_argument('--performance_file', type=str, default='performance.xlsx',
+                    help='Path to Excel file for saving performance metrics')
+
+    args = parser.parse_args()
+    main(args)
