@@ -37,16 +37,27 @@ def evaluate_localization(loc_pred, loc_true, threshold):
     return num_failures, mse
 
 
-def evaluate_model_on_data(model, data_dir, threshold):
+def evaluate_model_on_data(args):
     """
     Evaluate a model on a dataset.
+    
+    Args:
+        args: Namespace containing:
+            - model: Model type to evaluate
+            - data_dir: Path to dataset
+            - threshold: Distance threshold for evaluation
+            - plot: Whether to plot results
+            - device: Device to run on (cpu/cuda)
     """
-    # Import models
-
+    model = args.model
+    data_dir = args.data_dir
+    threshold = args.threshold
+    plot = args.plot if hasattr(args, 'plot') else True
+    device = args.device if hasattr(args, 'device') else 'cpu'
 
     # Initialize model based on model_name
     if model == "music" or model == "srp-phat":
-        model_obj = SoundLocalization(algorithm=model)
+        model_obj = SoundLocalization(algorithm=model, device=device)
     elif model == "linear-cca":
         # model_obj = LinearCCA()
         pass
@@ -79,7 +90,8 @@ def evaluate_model_on_data(model, data_dir, threshold):
     num_failures, mse = evaluate_localization(predictions_array, y_array, threshold)
 
     # Plot predictions
-    plot_predictions(predictions_array, y_array)
+    if plot:
+        plot_predictions(predictions_array, y_array)
 
     return num_failures, mse
 
@@ -131,9 +143,13 @@ if __name__ == "__main__":
                       help='Directory containing dataset')
     parser.add_argument('--threshold', type=float, default=0.5,
                       help='Distance threshold for failure detection')
+    parser.add_argument('--plot', type=bool, default=True,
+                      help='Plot predictions')
+    parser.add_argument('--device', type=str, default='cpu',
+                      help='Device to run model on')
 
     args = parser.parse_args()
 
-    num_failures, mse = evaluate_model_on_data(args.model, args.data_dir, args.threshold)
+    num_failures, mse = evaluate_model_on_data(args)
     print(f"Number of failures: {num_failures}")
     print(f"MSE: {mse}")
