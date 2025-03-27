@@ -11,7 +11,7 @@ from source.data_processing.location_sampler import LocationSampler
 from source.data_processing.audio_data_loader import load_all_wavs_in_dir
 from source.data_processing.acoustic_preprocessor import preprocess_audio_array
 
-DEBUG = False
+DEBUG = True
 DELETE_DIR = True  # if true, generated data will overwrite the previous under the same data_name
 DMIC = False
 np.random.seed(0)

@@ -5,3 +5,4 @@ share
 .idea
 *.csv
 __pycache__/
+*.xlsx

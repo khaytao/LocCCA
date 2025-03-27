@@ -2,6 +2,8 @@ import numpy as np
 import torch
 import argparse
 import matplotlib.pyplot as plt
+import pandas as pd
+import os
 
 from source.models.music import SoundLocalization
 # from source.models.cca import LinearCCA, DeepCCA
@@ -93,7 +95,12 @@ def evaluate_model_on_data(args):
     if plot:
         plot_predictions(predictions_array, y_array)
 
-    return num_failures, mse
+    print(f"Number of failures: {num_failures}/{len(predictions)}")
+    print(f"MSE: {mse}")
+
+    num_speakers = len(predictions)
+
+    return num_speakers, num_failures, mse
 
 def plot_predictions(predictions, ground_truth):
     """
@@ -147,9 +154,43 @@ if __name__ == "__main__":
                       help='Plot predictions')
     parser.add_argument('--device', type=str, default=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
                       help='Device to run model on (cuda if available, otherwise cpu)')
+    
+    parser.add_argument('--performance_file', type=str, default='performance.xlsx',
+                    help='Path to Excel file for saving performance metrics')
 
     args = parser.parse_args()
 
-    num_failures, mse = evaluate_model_on_data(args)
-    print(f"Number of failures: {num_failures}")
-    print(f"MSE: {mse}")
+    num_speakers, num_failures, mse = evaluate_model_on_data(args)
+
+    # Calculate failure percentage
+    fail_percentage = (num_failures / num_speakers) * 100
+
+    # Create performance dataframe if it doesn't exist, otherwise load it
+
+
+    performance_file = args.performance_file
+    if os.path.exists(performance_file):
+        perf_df = pd.read_excel(performance_file)
+    else:
+        perf_df = pd.DataFrame(columns=["model_name", "dataset_path", "num_speakers", 
+                                      "threshold", "fail_percentage", "mse"])
+
+    # Add new row with current results
+    new_row = {
+        "model_name": args.model,
+        "dataset_path": args.data_dir,
+        "num_speakers": num_speakers,
+        "threshold": args.threshold,
+        "fail_percentage": fail_percentage,
+        "mse": mse
+    }
+    
+    perf_df = pd.concat([perf_df, pd.DataFrame([new_row])], ignore_index=True)
+
+    # Save updated dataframe
+    perf_df.to_excel(performance_file, index=False)
+
+    print(f"\nResults saved to {performance_file}")
+    print(f"Model: {args.model}")
+    print(f"Failure percentage: {fail_percentage:.2f}%")
+    print(f"MSE: {mse:.4f}")

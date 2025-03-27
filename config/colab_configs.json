@@ -20,7 +20,7 @@
         "model": "music",
         "data_dir": "data/generated/TIMIT_sample",
         "threshold": 0.5,
-        "plot": true
+        "plot": true,
+        "performance_file": "performance.xlsx"
     }
 }
-
