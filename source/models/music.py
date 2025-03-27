@@ -62,6 +62,10 @@ class SoundLocalization(LocalizationModel):
         mic_y = scenario_0_df['mic_location_y'].values
         mic_z = np.ones(len(scenario_0_df)) * self.speaker_hight
         mic_array = np.stack([mic_x, mic_y, mic_z])
+        # Normalize mic positions using same function as speaker locations
+        norm_x, norm_y = self.normalize_coordinates(mic_array[0], mic_array[1])
+        mic_array[0] = norm_x
+        mic_array[1] = norm_y
         mic_positions = torch.from_numpy(mic_array).T.float()  # Transpose to get Nx3 shape
 
         # Get unique scenarios and number of mics
@@ -107,9 +111,9 @@ class SoundLocalization(LocalizationModel):
             orig_x = scenario_group.iloc[0]['x']
             orig_y = scenario_group.iloc[0]['y']
 
-            norm_x, norm_y = self.normalize_coordinates(orig_x, orig_y)
+            # norm_x, norm_y = self.normalize_coordinates(orig_x, orig_y)
 
-            locations.append(torch.tensor([norm_x, norm_y], dtype=torch.float32))
+            locations.append(torch.tensor([orig_x, orig_y], dtype=torch.float32))
 
         # Convert lists to tensors
         locations = torch.stack(locations)
@@ -155,7 +159,11 @@ class SoundLocalization(LocalizationModel):
 
             # Move to CPU
             doa = doa.cpu()
-
+            
+            # Denormalize coordinates before appending
+            denorm_x, denorm_y = self.denormalize_coordinates(doa[0], doa[1])
+            doa = torch.tensor([denorm_x, denorm_y], dtype=torch.float32)
+            
             results.append(doa)
 
         return results

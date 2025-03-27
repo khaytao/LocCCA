@@ -31,12 +31,16 @@ def evaluate_localization(loc_pred, loc_true, threshold):
     
     # Calculate MSE for successful predictions only
     successful_mask = distances <= threshold
+    # Calculate average distance for all points
+    avg_with_failures = np.mean(distances)
+    
+    # Calculate average distance for successful points only
     if np.any(successful_mask):
-        mse = np.mean((loc_pred[successful_mask] - loc_true[successful_mask])**2)
+        avg_without_failures = np.mean(distances[successful_mask])
     else:
-        mse = float('inf')  # All predictions failed
+        avg_without_failures = float('inf')  # All predictions failed
         
-    return num_failures, mse
+    return num_failures, avg_with_failures, avg_without_failures
 
 
 def evaluate_model_on_data(args):
@@ -89,18 +93,19 @@ def evaluate_model_on_data(args):
         y_array = np.array(y)
 
     # Evaluate predictions
-    num_failures, mse = evaluate_localization(predictions_array, y_array, threshold)
+    num_failures, avg_with_failures, avg_without_failures = evaluate_localization(predictions_array, y_array, threshold)
 
     # Plot predictions
     if plot:
         plot_predictions(predictions_array, y_array)
 
     print(f"Number of failures: {num_failures}/{len(predictions)}")
-    print(f"MSE: {mse}")
+    print(f"Average distance with failures: {avg_with_failures}")
+    print(f"Average distance without failures: {avg_without_failures}")
 
     num_speakers = len(predictions)
 
-    return num_speakers, num_failures, mse
+    return num_speakers, num_failures, avg_with_failures, avg_without_failures
 
 def plot_predictions(predictions, ground_truth):
     """
@@ -160,7 +165,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    num_speakers, num_failures, mse = evaluate_model_on_data(args)
+    num_speakers, num_failures, avg_with_failures, avg_without_failures = evaluate_model_on_data(args)
 
     # Calculate failure percentage
     fail_percentage = (num_failures / num_speakers) * 100
@@ -173,7 +178,7 @@ if __name__ == "__main__":
         perf_df = pd.read_excel(performance_file)
     else:
         perf_df = pd.DataFrame(columns=["model_name", "dataset_path", "num_speakers", 
-                                      "threshold", "fail_percentage", "mse"])
+                                      "threshold", "fail_percentage", "avg_with_failures", "avg_without_failures"])
 
     # Add new row with current results
     new_row = {
@@ -182,7 +187,8 @@ if __name__ == "__main__":
         "num_speakers": num_speakers,
         "threshold": args.threshold,
         "fail_percentage": fail_percentage,
-        "mse": mse
+        "avg_with_failures": avg_with_failures,
+        "avg_without_failures": avg_without_failures
     }
     
     perf_df = pd.concat([perf_df, pd.DataFrame([new_row])], ignore_index=True)
@@ -193,4 +199,5 @@ if __name__ == "__main__":
     print(f"\nResults saved to {performance_file}")
     print(f"Model: {args.model}")
     print(f"Failure percentage: {fail_percentage:.2f}%")
-    print(f"MSE: {mse:.4f}")
+    print(f"Average distance with failures: {avg_with_failures:.4f}")
+    print(f"Average distance without failures: {avg_without_failures:.4f}")
