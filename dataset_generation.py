@@ -11,8 +11,11 @@ from source.data_processing.location_sampler import LocationSampler
 from source.data_processing.audio_data_loader import load_all_wavs_in_dir
 from source.data_processing.acoustic_preprocessor import preprocess_audio_array
 
-DEBUG = True
+DEBUG = False
 DELETE_DIR = True  # if true, generated data will overwrite the previous under the same data_name
+DMIC = False
+np.random.seed(0)
+
 
 def get_candidates(room_dim, resolution):
     """
@@ -61,6 +64,19 @@ def get_d_vector(coordinates, room_center=(3, 3)):
 
 
 def main(args, mic_locations):
+
+    # creates empty output directory
+    savedir = f"data/generated/{args.dataset_name}/"
+    if os.path.exists(savedir):
+        for file in os.listdir(savedir):
+            file_path = os.path.join(savedir, file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(f"Error: {e}")
+    os.makedirs(savedir, exist_ok=True)
+
     # Define absorption for walls to achieve T60 of 0.2 seconds
     absorption, max_order = pra.inverse_sabine(rt60=args.t60, room_dim=args.room_dim)
 
@@ -70,10 +86,23 @@ def main(args, mic_locations):
     mic_positions = []
     for i in range(len(mic_locations)):
         mic_array_location = np.array([mic_locations[i][0], mic_locations[i][1], mic_height])
-        mic_1_pos = mic_array_location - (get_d_vector(mic_array_location) * array_distance)
-        mic_2_pos = mic_array_location + (get_d_vector(mic_array_location) * array_distance)
-        mic_positions.extend([mic_1_pos, mic_2_pos])
+
+        if DMIC:
+            mic_1_pos = mic_array_location - (get_d_vector(mic_array_location) * array_distance)
+            mic_2_pos = mic_array_location + (get_d_vector(mic_array_location) * array_distance)
+            mic_positions.extend([mic_1_pos, mic_2_pos])
+        else:
+            mic_positions.append(mic_array_location)
     mic_positions = np.array(mic_positions).T  # Convert to 2xN array
+
+    location_sampler = LocationSampler(args.room_dim[0], args.room_dim[1])
+    if args.distribution == 'uniform':
+        speaker_locations = location_sampler.sample_uniform(args.num_speakers)
+    elif args.distribution == 'gaussian':
+        speaker_locations = location_sampler.sample_gaussians(args.centroids, args.std, args.num_speakers)
+    else:
+        raise ValueError("Distribution must be either 'uniform' or 'gaussian'")
+    # speaker_locations = location_sampler.sample_uniform(args.num_speakers)
 
     # Debug flag for visualization
 
@@ -81,6 +110,7 @@ def main(args, mic_locations):
         # Plot microphone positions
         plt.figure()
         plt.scatter(mic_positions[0, :], mic_positions[1, :], c='red', marker='^', s=100, label='Microphones')
+        plt.scatter(speaker_locations[:, 0], speaker_locations[:, 1], c='blue', label='speakers')
         plt.xlabel('X (m)')
         plt.ylabel('Y (m)')
         plt.title('Microphone Array Positions')
@@ -90,14 +120,6 @@ def main(args, mic_locations):
         plt.ylim(0, args.room_dim[1])
         plt.show()
 
-    location_sampler = LocationSampler(args.room_dim[0], args.room_dim[1])
-    if args.distribution == 'uniform':
-        speaker_locations = location_sampler.sample_uniform(args.num_speakers)
-    elif args.distribution == 'gaussian':
-        speaker_locations = location_sampler.sample_gaussians(args.centroids, args.std, args.num_speakers)
-    else:
-        raise ValueError("Distribution must be either 'uniform' or 'gaussian'")
-    speaker_locations = location_sampler.sample_uniform(args.num_speakers)
     signals, filenames = load_all_wavs_in_dir(args.data_location)
 
     num_signals = len(signals)
@@ -105,7 +127,7 @@ def main(args, mic_locations):
     X_amplitude = []
     Y_list = []
 
-    recording_df_columns = ['filename', 'x', 'y', 'mic_index', 'mic_location_x', 'mic_location_y']
+    recording_df_columns = ['scenario_index', 'filename', 'x', 'y', 'mic_index', 'mic_location_x', 'mic_location_y']
     recordings_info_rows = []
     for i, speaker_location in enumerate(tqdm(speaker_locations)):
         room = pra.ShoeBox(args.room_dim, fs=args.fs, materials=pra.Material(absorption), max_order=max_order)
@@ -116,26 +138,20 @@ def main(args, mic_locations):
 
         room.simulate()
 
-        savedir = f"data/generated/{args.dataset_name}/"
-        if os.path.exists(savedir):
-            for file in os.listdir(savedir):
-                file_path = os.path.join(savedir, file)
-                try:
-                    if os.path.isfile(file_path):
-                        os.unlink(file_path)
-                except Exception as e:
-                    print(f"Error: {e}")
-        os.makedirs(savedir, exist_ok=True)
+
+        signal_name = filenames[i % num_signals].replace(".", "_")
+
         for mic_idx in range(room.mic_array.signals.shape[0]):
             # Even indices are left mics, odd indices are right mics
             mic_type = "left_mic" if mic_idx % 2 == 0 else "right_mic"
             mic_signal = room.mic_array.signals[mic_idx, :]
-            save_name = f"{filenames[i % num_signals]}_{speaker_location[0]}_{speaker_location[1]}_{mic_idx // 2}_{mic_type}.wav"
 
+            save_name = f"{signal_name}_{speaker_location[0]}_{speaker_location[1]}_{mic_idx // 2}_{mic_type}.wav"
 
             write(f"{savedir}/{save_name}",
                   args.fs, mic_signal)
             recordings_info_rows.append({
+                'scenario_index': i,
                 'filename': save_name,
                 'x': speaker_location[0],
                 'y': speaker_location[1],
@@ -146,16 +162,16 @@ def main(args, mic_locations):
 
         recordings_info = pd.DataFrame(recordings_info_rows, columns=recording_df_columns)
         # Add hyperlinks to wav files
-        recordings_info['filename'] = recordings_info['filename'].apply(
-            lambda x: f'=HYPERLINK("{x}","{x}")'
-        )
+        # recordings_info['filename'] = recordings_info['filename'].apply(
+        #     lambda x: f'=HYPERLINK("{x}","{x}")'
+        # )
         while True:
             try:
                 recordings_info.to_excel(f"{savedir}/recordings_info.xlsx", index=False)
                 break
             except PermissionError:
                 input("Excel file is open. Please close it and press Enter to try again...")
-        
+
         x = room.mic_array.signals
         mean_amplitude, prp = preprocess_audio_array(x, args.fs)
         #
@@ -164,8 +180,8 @@ def main(args, mic_locations):
 
         p = np.zeros((x.shape[0], 2))
         for i in range(x.shape[0] // 2):
-            p[2*i] = speaker_location[0] - mic_positions[0, i]
-            p[2*i + 1] = speaker_location[1] - mic_positions[1, i]
+            p[2 * i] = speaker_location[0] - mic_positions[0, i]
+            p[2 * i + 1] = speaker_location[1] - mic_positions[1, i]
 
         X_angle.append(prp.reshape(prp.shape[0], -1))  # Reshape prp to T x (C x F)
         X_amplitude.append(mean_amplitude.reshape(prp.shape[0], -1))
@@ -174,9 +190,9 @@ def main(args, mic_locations):
     combined_audio_feature_list = [np.concatenate((a, b), axis=1) for a, b in zip(X_amplitude, X_angle)]
     X = np.concatenate(combined_audio_feature_list, axis=0)
     Y = np.concatenate(Y_list, axis=0)
-    
+
     candidates = get_candidates(args.room_dim, args.room_resolution)
-    
+
     save_dataset_to_file(candidates, f"candidates_{args.dataset_name}.csv")
     save_dataset_to_file(X, f"X_{args.dataset_name}.csv")
     save_dataset_to_file(Y, f"Y_{args.dataset_name}.csv")
@@ -231,5 +247,5 @@ if __name__ == "__main__":
 
     with open('config/mic_location.json', 'r') as f:
         mic_locations = json.load(f)
-    np.random.seed(0)
+
     main(args, mic_locations)
