@@ -79,12 +79,11 @@ def evaluate_model_on_data(args):
     # Get predictions
     predictions = model_obj.process(X)
 
-    # Average over N dimension for each prediction if needed
-    if isinstance(predictions[0], torch.Tensor):
-        avg_predictions = [p.mean(dim=1).squeeze() for p in predictions]
-        predictions_array = np.array(avg_predictions)[:,:2]
+    # Convert predictions to numpy array
+    if isinstance(predictions, torch.Tensor):
+        predictions_array = predictions.numpy()
     else:
-        predictions_array = np.array(predictions)[:,:2]
+        predictions_array = np.array(predictions)
 
     # Convert ground truth to numpy if needed
     if isinstance(y, torch.Tensor):

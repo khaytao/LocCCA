@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class LocalizationModel(ABC):
     """
     Abstract base class for localization models.

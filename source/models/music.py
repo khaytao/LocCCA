@@ -37,7 +37,11 @@ class SoundLocalization(LocalizationModel):
         self.room_size = room_size
         self.algorithm = algorithm.lower()
         self.device = device
-
+        self.mic_positions = None
+    
+    def get_mic_positions(self):
+        return self.mic_positions
+    
     def preprocess(self, data_dir: str):
         """
         Preprocess audio data from directory.
@@ -67,11 +71,6 @@ class SoundLocalization(LocalizationModel):
         mic_array[0] = norm_x
         mic_array[1] = norm_y
         mic_positions = torch.from_numpy(mic_array).T.float()  # Transpose to get Nx3 shape
-
-        # Get unique scenarios and number of mics
-        unique_scenarios = info_df['scenario_index'].unique()
-        NUM_SCENARIOS = len(unique_scenarios)
-        NUM_MICS = len(info_df['mic_index'].unique())
 
         # Initialize lists to store data
         audio_data = []
@@ -129,6 +128,7 @@ class SoundLocalization(LocalizationModel):
         else:
             raise ValueError(f"Unknown algorithm: {self.algorithm}. Use 'music' or 'srp-phat'.")
 
+        self.mic_positions = mic_positions
         return audio_data, locations
 
     def process(self, data):
@@ -157,11 +157,14 @@ class SoundLocalization(LocalizationModel):
             XXs = self.cov(Xs)
             doa = self.sp_model(XXs)
 
-            # Move to CPU
-            doa = doa.cpu().squeeze()
+            # Move to CPU and drop third element
+            doa = doa.cpu().squeeze()[:,:2]  # Keep only x,y coordinates
             
-            # Denormalize coordinates before appending
-            denorm_x, denorm_y = self.denormalize_coordinates(doa[:,0], doa[:,1])
+            # Average across K predictions to get single (x,y) point
+            avg_doa = doa.mean(dim=0)
+            
+            # Denormalize coordinates
+            denorm_x, denorm_y = self.denormalize_coordinates(avg_doa[0], avg_doa[1])
             doa = torch.tensor([denorm_x, denorm_y], dtype=torch.float32)
             
             results.append(doa)
