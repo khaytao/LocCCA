@@ -158,10 +158,10 @@ class SoundLocalization(LocalizationModel):
             doa = self.sp_model(XXs)
 
             # Move to CPU
-            doa = doa.cpu()
+            doa = doa.cpu().squeeze()
             
             # Denormalize coordinates before appending
-            denorm_x, denorm_y = self.denormalize_coordinates(doa[0], doa[1])
+            denorm_x, denorm_y = self.denormalize_coordinates(doa[:,0], doa[:,1])
             doa = torch.tensor([denorm_x, denorm_y], dtype=torch.float32)
             
             results.append(doa)
