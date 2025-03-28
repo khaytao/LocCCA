@@ -96,7 +96,7 @@ def evaluate_model_on_data(args):
 
     # Plot predictions
     if plot:
-        plot_predictions(predictions_array, y_array)
+        plot_predictions(predictions_array, y_array, model_obj.get_mic_positions())
 
     print(f"Number of failures: {num_failures}/{len(predictions)}")
     print(f"Average distance with failures: {avg_with_failures}")
@@ -106,7 +106,7 @@ def evaluate_model_on_data(args):
 
     return num_speakers, num_failures, avg_with_failures, avg_without_failures
 
-def plot_predictions(predictions, ground_truth):
+def plot_predictions(predictions, ground_truth, mic_positions):
     """
     Plot predictions against ground truth.
     """
@@ -137,6 +137,9 @@ def plot_predictions(predictions, ground_truth):
 
     # Plot ground truth
     plt.scatter(ground_truth[:,0], ground_truth[:,1], c='red', marker='^', label='Ground Truth')
+
+    # Plot mic positions
+    plt.scatter(mic_positions[:,0], mic_positions[:,1], c='green', marker='*', label='Mic Positions')
 
     plt.xlabel('X')
     plt.ylabel('Y')

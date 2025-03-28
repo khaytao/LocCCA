@@ -128,7 +128,8 @@ class SoundLocalization(LocalizationModel):
         else:
             raise ValueError(f"Unknown algorithm: {self.algorithm}. Use 'music' or 'srp-phat'.")
 
-        self.mic_positions = mic_positions
+        denorm_x, denorm_y = self.denormalize_coordinates(mic_positions[:,0], mic_positions[:,1])
+        self.mic_positions = torch.column_stack((denorm_x, denorm_y))
         return audio_data, locations
 
     def process(self, data):
